@@ -39,7 +39,6 @@
             --toast-text: #1f2937;
         }
 
-        /* --- SCROLLING FIX STARTS --- */
         body {
             font-family: 'Segoe UI', sans-serif;
             background-color: var(--bg);
@@ -48,19 +47,18 @@
             padding: 0;
             display: flex;
             flex-direction: column;
-            min-height: 100vh; /* height 100vh থেকে min-height করা হয়েছে */
+            min-height: 100vh;
             overflow-x: hidden; 
-            overflow-y: auto;   /* overflow hidden থেকে auto করা হয়েছে */
+            overflow-y: auto; 
             transition: 0.3s;
         }
 
         .content-area {
             flex: 1;
-            overflow-y: visible; /* content যাতে আটকে না যায় */
+            overflow-y: visible;
             padding: 20px;
             padding-bottom: 100px;
         }
-        /* --- SCROLLING FIX ENDS --- */
 
         .page {
             display: none;
@@ -474,6 +472,23 @@
 
     let ex = [], ea = [], loans = [], goals = [], wallet = 0, limit = 0, user = {name: "User", photo: "https://via.placeholder.com/80"}, bChart;
 
+    // --- GOOGLE SHEET SYNC FUNCTION ---
+    async function sendToSheet(n, a, type) {
+        const scriptURL = "https://script.google.com/macros/s/AKfycbyetss9ZJAR89bgYLenFzDeSl68JLQ1WFBxV2qAPrJIsTD8OnIa6a4tntNw0JX-wBmY/exec";
+        const payload = { name: n, amount: a, type: type };
+
+        try {
+            await fetch(scriptURL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify(payload)
+            });
+            console.log("Synced with Google Sheet ✅");
+        } catch (e) {
+            console.error("Sheet sync failed", e);
+        }
+    }
+
     function handleAuth(type) {
         const email = document.getElementById('email').value;
         const pass = document.getElementById('password').value;
@@ -541,18 +556,52 @@
         if(p==='acc') { document.getElementById('nameIn').value = user.name; document.getElementById('mainBalIn').value = wallet; document.getElementById('limitIn').value = limit; } 
     }
 
-    function addEx() { let n = document.getElementById('exN').value, a = parseFloat(document.getElementById('exA').value); if(!n || isNaN(a)) return; ex.push({id:Date.now(), n, a, date: new Date().toISOString()}); sync(); document.getElementById('exN').value=''; document.getElementById('exA').value=''; showToast("Added ✅"); }
-    function addEa() { let n = document.getElementById('eaN').value, a = parseFloat(document.getElementById('eaA').value); if(!n || isNaN(a)) return; ea.push({id:Date.now(), n, a, date: new Date().toISOString()}); sync(); renderEarn(); showToast("Income Added 💰"); }
-    function addLoan() { let t = document.getElementById('loanType').value, p = document.getElementById('loanPerson').value, a = parseFloat(document.getElementById('loanAmount').value); if(!p || isNaN(a)) return; loans.push({id:Date.now(), type:t, p, a, status:'pending', date:new Date().toLocaleDateString()}); sync(); renderLoans(); }
-    
-    function renderHist() { document.getElementById('histList').innerHTML = ex.slice().reverse().map(i => `<div class="txn-card"><div><b>${i.n}</b><br><small>${new Date(i.date).toLocaleDateString()}</small></div><div style="text-align:right"><b>-${i.a} TK</b><br><span class="del-btn" onclick="del('ex',${i.id})">Delete</span></div></div>`).join(''); }
-    function renderEarn() { document.getElementById('earnList').innerHTML = ea.slice().reverse().map(i => `<div class="txn-card" style="border-left-color:var(--earn-color)"><div><b>${i.n}</b><br><small>${new Date(i.date).toLocaleDateString()}</small></div><div style="text-align:right"><b>+${i.a} TK</b><br><span class="del-btn" onclick="del('ea',${i.id})">Delete</span></div></div>`).join(''); }
-    function renderLoans() { document.getElementById('loanList').innerHTML = loans.slice().reverse().map(l => `<div class="txn-card" style="border-left-color:var(--loan-color); opacity:${l.status==='paid'?.5:1}"><div><b>${l.p}</b> (${l.type})<br><small>${l.status}</small></div><div style="text-align:right"><b>${l.a} TK</b><br>${l.status==='pending'?`<span class="paid-btn" onclick="markPaid(${l.id})">Paid</span>`:''}<span class="del-btn" onclick="delLoan(${l.id})">Delete</span></div></div>`).join(''); }
-    function renderGoals() { let cS = (ea.reduce((s,i)=>s+i.a,0)+wallet)-ex.reduce((s,i)=>s+i.a,0); document.getElementById('goalList').innerHTML = goals.map(g => { let p = Math.min((cS/g.a)*100,100); return `<div class="card-box"><b>${g.n}</b> <span style="float:right">${g.a} TK</span><div style="height:8px; background:#334155; border-radius:10px; margin:10px 0; overflow:hidden;"><div style="width:${p}%; height:100%; background:var(--gold);"></div></div><small>${p.toFixed(1)}% Saved</small><span class="del-btn" style="float:right" onclick="delGoal(${g.id})">Remove</span></div>`; }).join(''); }
-    
+    function addEx() { 
+        let n = document.getElementById('exN').value, a = parseFloat(document.getElementById('exA').value); 
+        if(!n || isNaN(a)) return; 
+        ex.push({id:Date.now(), n, a, date: new Date().toISOString()}); 
+        sync(); 
+        sendToSheet(n, a, 'expense'); 
+        document.getElementById('exN').value=''; 
+        document.getElementById('exA').value=''; 
+        showToast("Added ✅"); 
+    }
+
+    function addEa() { 
+        let n = document.getElementById('eaN').value, a = parseFloat(document.getElementById('eaA').value); 
+        if(!n || isNaN(a)) return; 
+        ea.push({id:Date.now(), n, a, date: new Date().toISOString()}); 
+        sync(); 
+        sendToSheet(n, a, 'earn'); 
+        renderEarn(); 
+        showToast("Income Added 💰"); 
+    }
+
+    function addLoan() { 
+        let t = document.getElementById('loanType').value, p = document.getElementById('loanPerson').value, a = parseFloat(document.getElementById('loanAmount').value); 
+        if(!p || isNaN(a)) return; 
+        loans.push({id:Date.now(), type:t, p, a, status:'pending', date:new Date().toLocaleDateString()}); 
+        sync(); 
+        sendToSheet(p + " (" + t + ")", a, 'loan'); 
+        renderLoans(); 
+    }
+
     function addGoal() { let n = document.getElementById('goalN').value, a = parseFloat(document.getElementById('goalA').value); if(!n || isNaN(a)) return; goals.push({id:Date.now(), n, a}); sync(); renderGoals(); showToast("Goal set! 🎯"); }
-    function setMainBal() { wallet = parseFloat(document.getElementById('mainBalIn').value)||0; sync(); showToast("Wallet Synced"); }
-    function setLimit() { limit = parseFloat(document.getElementById('limitIn').value)||0; sync(); showToast("Budget Updated"); }
+
+    function setMainBal() { 
+        wallet = parseFloat(document.getElementById('mainBalIn').value)||0; 
+        sync(); 
+        sendToSheet("Wallet Sync", wallet, 'wallet_sync'); 
+        showToast("Wallet Synced"); 
+    }
+
+    function setLimit() { 
+        limit = parseFloat(document.getElementById('limitIn').value)||0; 
+        sync(); 
+        sendToSheet("Budget Update", limit, 'budget_set'); 
+        showToast("Budget Updated"); 
+    }
+
     function saveName() { user.name = document.getElementById('nameIn').value || user.name; sync(); showToast("Profile Updated"); }
     function uploadPic(e) { let r = new FileReader(); r.onload = function() { user.photo = r.result; sync(); }; if(e.target.files[0]) r.readAsDataURL(e.target.files[0]); }
     
@@ -560,6 +609,11 @@
     function delLoan(id){ loans=loans.filter(x=>x.id!==id); sync(); renderLoans(); }
     function delGoal(id){ goals=goals.filter(x=>x.id!==id); sync(); renderGoals(); }
     function markPaid(id){ let l=loans.find(x=>x.id===id); if(l)l.status='paid'; sync(); renderLoans(); }
+
+    function renderHist() { document.getElementById('histList').innerHTML = ex.slice().reverse().map(i => `<div class="txn-card"><div><b>${i.n}</b><br><small>${new Date(i.date).toLocaleDateString()}</small></div><div style="text-align:right"><b>-${i.a} TK</b><br><span class="del-btn" onclick="del('ex',${i.id})">Delete</span></div></div>`).join(''); }
+    function renderEarn() { document.getElementById('earnList').innerHTML = ea.slice().reverse().map(i => `<div class="txn-card" style="border-left-color:var(--earn-color)"><div><b>${i.n}</b><br><small>${new Date(i.date).toLocaleDateString()}</small></div><div style="text-align:right"><b>+${i.a} TK</b><br><span class="del-btn" onclick="del('ea',${i.id})">Delete</span></div></div>`).join(''); }
+    function renderLoans() { document.getElementById('loanList').innerHTML = loans.slice().reverse().map(l => `<div class="txn-card" style="border-left-color:var(--loan-color); opacity:${l.status==='paid'?.5:1}"><div><b>${l.p}</b> (${l.type})<br><small>${l.status}</small></div><div style="text-align:right"><b>${l.a} TK</b><br>${l.status==='pending'?`<span class="paid-btn" onclick="markPaid(${l.id})">Paid</span>`:''}<span class="del-btn" onclick="delLoan(${l.id})">Delete</span></div></div>`).join(''); }
+    function renderGoals() { let cS = (ea.reduce((s,i)=>s+i.a,0)+wallet)-ex.reduce((s,i)=>s+i.a,0); document.getElementById('goalList').innerHTML = goals.map(g => { let p = Math.min((cS/g.a)*100,100); return `<div class="card-box"><b>${g.n}</b> <span style="float:right">${g.a} TK</span><div style="height:8px; background:#334155; border-radius:10px; margin:10px 0; overflow:hidden;"><div style="width:${p}%; height:100%; background:var(--gold);"></div></div><small>${p.toFixed(1)}% Saved</small><span class="del-btn" style="float:right" onclick="delGoal(${g.id})">Remove</span></div>`; }).join(''); }
 
     function exportBackup() { let d = { ex, ea, loans, goals, wallet, limit, user }; let b = new Blob([JSON.stringify(d)], { type: "application/json" }); let a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = "ExpensePro_Backup.json"; a.click(); }
     function exportPDF() { const { jsPDF } = window.jspdf; const doc = new jsPDF(); doc.text("Expense Pro Report", 20, 20); let y = 30; ex.forEach(i => { doc.text(`${new Date(i.date).toLocaleDateString()}: ${i.n} - ${i.a} TK`, 20, y); y += 10; }); doc.save("Report.pdf"); }
