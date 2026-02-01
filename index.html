@@ -3,83 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Expense Pro - Fixed</title>
+    <title>Expense Pro - Verified</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
         :root { 
-            --bg: #0d1117; --card: #161b22; --primary: #8b5cf6; --text-p: #f0f6fc; --text-s: #8b949e; 
-            --danger: #f85149; --earn-color: #238636; --loan-color: #f97316;
+            --bg: #0d1117; --card: #161b22; --primary: #8b5cf6; --accent: #22d3ee; 
+            --earn-color: #238636; --danger: #f85149; --text-p: #f0f6fc; --text-s: #8b949e; 
+            --gold: #fbc02d; --loan-color: #f97316;
         }
         .light-mode { 
-            --bg: #f0f2f5; --card: #ffffff; --primary: #6366f1; --text-p: #1f2937; --text-s: #6b7280; 
+            --bg: #f0f2f5; --card: #ffffff; --primary: #6366f1; --accent: #0ea5e9; 
+            --text-p: #1f2937; --text-s: #6b7280; --gold: #f59e0b; 
         }
-
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg);
-            color: var(--text-p);
-            font-family: 'Segoe UI', sans-serif;
-            overflow: hidden; /* বাইরের বডি স্ক্রল হবে না */
-        }
-
-        /* মেইন অ্যাপ কন্টেইনার */
-        #mainApp {
-            display: flex;
-            flex-direction: column;
-            height: 100vh; /* পুরো স্ক্রিন দখল করবে */
-        }
-
-        /* স্ক্রল এরিয়া */
-        .content-area {
-            flex: 1; /* স্ক্রিন যতটুকু খালি থাকবে সবটুকু নিবে */
-            overflow-y: auto; /* শুধু এই অংশ স্ক্রল হবে */
-            padding: 15px;
-            padding-bottom: 100px; /* নিচের নেভ বারের জন্য জায়গা */
-            box-sizing: border-box;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        /* কার্ড স্টাইল */
-        .card-box { background: var(--card); padding: 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 15px; }
-        .glass-balance { background: linear-gradient(135deg, var(--primary) 0%, #4c1d95 100%); padding: 20px; border-radius: 24px; color: white; text-align: center; margin-bottom: 15px; }
         
-        /* নেভিগেশন বার - একদম নিচে ফিক্সড */
-        .nav-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 70px;
-            background: var(--card);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            border-top: 1px solid rgba(255,255,255,0.05);
-            z-index: 1000;
-            padding-bottom: env(safe-area-inset-bottom);
-        }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); color: var(--text-p); margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-        .nav-item { color: var(--text-s); font-size: 11px; text-align: center; flex: 1; cursor: pointer; }
-        .nav-item.active { color: var(--primary); font-weight: bold; }
+        /* Scroll Fix: Ensures bottom nav doesn't hide content */
+        .content-area { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 120px; -webkit-overflow-scrolling: touch; }
 
-        /* Auth Page */
+        .page { display: none; animation: fadeIn 0.2s ease; }
+        .active-page { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .glass-balance { background: linear-gradient(135deg, var(--primary) 0%, #4c1d95 100%); padding: 22px; border-radius: 24px; color: white; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }
+        .summary-card { background: var(--card); padding: 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); }
+        
+        .card-box { background: var(--card); padding: 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 15px; }
+        input, select { width: 100%; padding: 12px; margin-bottom: 10px; background: var(--bg); border: 1px solid var(--text-s); border-radius: 12px; color: var(--text-p); outline: none; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .btn-main { background: var(--primary); color: white; }
+        
+        .nav-bar { position: fixed; bottom: 0; width: 100%; background: var(--card); display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid rgba(255,255,255,0.05); z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { color: var(--text-s); font-size: 10px; text-align: center; flex: 1; opacity: 0.7; }
+        .nav-item.active { color: var(--primary); font-weight: bold; opacity: 1; }
+
+        .txn-card { background: var(--card); padding: 14px; border-radius: 18px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--danger); }
+        .del-btn { color: var(--danger); font-size: 11px; font-weight: bold; cursor: pointer; padding: 5px; }
+        .mode-toggle { position: absolute; top: 15px; right: 15px; background: var(--card); width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 100; border: 1px solid var(--text-s); }
         #authPage { position: fixed; inset: 0; background: var(--bg); z-index: 5000; display: flex; align-items: center; justify-content: center; padding: 20px; }
         .auth-card { background: var(--card); padding: 30px; border-radius: 24px; width: 100%; max-width: 350px; text-align: center; }
-
-        .page { display: none; }
-        .active-page { display: block; }
-
-        input, select { width: 100%; padding: 12px; margin-bottom: 10px; background: var(--bg); border: 1px solid var(--text-s); border-radius: 12px; color: var(--text-p); box-sizing: border-box; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; background: var(--primary); color: white; }
-        
-        .txn-card { background: var(--card); padding: 12px; border-radius: 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--danger); }
-        .mode-toggle { position: absolute; top: 15px; right: 15px; background: var(--card); width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 100; border: 1px solid var(--text-s); }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -90,8 +58,8 @@
         <h2 style="color:var(--primary)">Expense Pro</h2>
         <input type="email" id="email" placeholder="Email">
         <input type="password" id="password" placeholder="Password">
-        <button onclick="handleAuth('login')">Login</button>
-        <button onclick="handleAuth('signup')" style="background:transparent; color:var(--text-s); margin-top:10px;">Create Account</button>
+        <button class="btn-main" onclick="handleAuth('login')">Login</button>
+        <button onclick="handleAuth('signup')" style="background:transparent; color:var(--accent); margin-top:10px;">Create Account</button>
     </div>
 </div>
 
@@ -101,36 +69,55 @@
         <div id="home" class="page active-page">
             <div style="display:flex; align-items:center; gap: 12px; margin-bottom:15px;">
                 <img id="hPic" src="https://via.placeholder.com/100" style="width:45px; height:45px; border-radius:50%; object-fit:cover;">
-                <div><span style="font-size:11px; color:var(--text-s);">Hello,</span><h3 id="hName" style="margin:0;">User</h3></div>
+                <div><span style="font-size:11px; color:var(--text-s);">Welcome back,</span><h3 id="hName" style="margin:0; font-size:16px;">User</h3></div>
             </div>
             <div class="glass-balance">
-                <span style="font-size: 10px;">BALANCE</span>
-                <div id="walletTotal" style="font-size:32px; font-weight:800; margin:5px 0;">0 TK</div>
-                <div style="font-size: 12px; opacity: 0.8;">Budget Left: <b id="budgetLeft">0 TK</b></div>
+                <span style="font-size: 10px; letter-spacing: 1px;">MONTHLY BUDGET LEFT</span>
+                <div id="budgetLeft" style="font-size:32px; font-weight:800; margin:5px 0;">0 TK</div>
+                <div style="background:rgba(255,255,255,0.15); border-radius:12px; padding:8px; display: inline-block; width: 85%;">
+                    <span style="font-size: 11px;">WALLET: <b id="walletTotal">0 TK</b></span>
+                </div>
             </div>
-            <div class="card-box" style="height: 200px;"><canvas id="budgetChart"></canvas></div>
+            <div class="summary-grid">
+                <div class="summary-card"><span>Today</span><br><b id="todaySpend">0</b></div>
+                <div class="summary-card"><span>Month</span><br><b id="monthSpend">0</b></div>
+            </div>
+            <div class="card-box" style="height: 220px;"><canvas id="budgetChart"></canvas></div>
             <div class="card-box">
                 <input type="text" id="exN" placeholder="Expense name">
                 <input type="number" id="exA" placeholder="Amount">
-                <button onclick="addEx()">Add Expense</button>
+                <button class="btn-main" onclick="addEx()">Add Expense</button>
             </div>
         </div>
+
+        <div id="earn" class="page"><h3>Earnings 💰</h3><div class="card-box"><input type="text" id="eaN" placeholder="Source"><input type="number" id="eaA" placeholder="Amount"><button style="background:var(--earn-color); color:white" onclick="addEa()">Add Income</button></div><div id="earnList"></div></div>
         
-        <div id="earn" class="page"><h3>Earnings 💰</h3><div class="card-box"><input type="text" id="eaN" placeholder="Source"><input type="number" id="eaA" placeholder="Amount"><button style="background:var(--earn-color)" onclick="addEa()">Add Income</button></div><div id="earnList"></div></div>
-        <div id="loan" class="page"><h3>Loans 🤝</h3><div class="card-box"><select id="loanType"><option value="given">Given</option><option value="taken">Taken</option></select><input type="text" id="loanPerson" placeholder="Name"><input type="number" id="loanAmount" placeholder="Amount"><button style="background:var(--loan-color)" onclick="addLoan()">Add Loan</button></div><div id="loanList"></div></div>
+        <div id="loan" class="page"><h3>Loans 🤝</h3><div class="card-box"><select id="loanType"><option value="given">Given</option><option value="taken">Taken</option></select><input type="text" id="loanPerson" placeholder="Name"><input type="number" id="loanAmount" placeholder="Amount"><button style="background:var(--loan-color); color:white" onclick="addLoan()">Add Loan</button></div><div id="loanList"></div></div>
+        
+        <div id="goal" class="page"><h3>Goals 🎯</h3><div class="card-box"><input type="text" id="goalN" placeholder="Target Name"><input type="number" id="goalA" placeholder="Goal Amount"><button style="background:var(--gold); color:black" onclick="addGoal()">Set Goal</button></div><div id="goalList"></div></div>
+        
         <div id="hist" class="page"><h3>History 📊</h3><div id="histList"></div></div>
+
         <div id="acc" class="page">
-            <h3>Profile 👤</h3>
             <div class="card-box" style="text-align:center">
-                <img id="accPic" src="https://via.placeholder.com/100" style="width:70px; height:70px; border-radius:50%; border:2px solid var(--primary);">
-                <h4 id="accDisplayName">User Name</h4>
+                <img id="accPic" src="https://via.placeholder.com/100" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border: 2px solid var(--primary);">
+                <h3 id="accDisplayName">User Name</h3>
+                <input type="file" id="pInput" style="display:none" onchange="uploadPic(event)">
+                <button onclick="document.getElementById('pInput').click()" style="width:auto; padding:8px 15px; font-size:11px; background:#444; color:white;">Change Photo</button>
             </div>
-            <div class="card-box"><input type="text" id="nameIn" placeholder="New Name"><button onclick="saveName()">Save Name</button></div>
+            <div class="card-box"><input type="text" id="nameIn" placeholder="Change Name"><button class="btn-main" onclick="saveName()">Save Profile</button></div>
             <div class="card-box">
-                <p>Initial Wallet: <input type="number" id="mainBalIn"><button onclick="setMainBal()" style="background:#444">Set</button></p>
-                <p>Monthly Budget: <input type="number" id="limitIn"><button onclick="setLimit()" style="background:#444">Set</button></p>
+                <p style="margin-bottom:5px; font-size:12px; color:var(--text-s);">SYNC DATA</p>
+                <div style="display:flex; gap:10px;"><input type="number" id="mainBalIn" placeholder="Wallet"><button onclick="setMainBal()" style="width:70px;">Set</button></div>
+                <div style="display:flex; gap:10px;"><input type="number" id="limitIn" placeholder="Budget"><button onclick="setLimit()" style="width:70px;">Set</button></div>
             </div>
-            <button onclick="logout()" style="background:var(--danger)">Logout</button>
+            <div class="card-box">
+                <button onclick="exportBackup()" style="background:var(--earn-color); color:white; margin-bottom:8px;">📤 Export JSON</button>
+                <button onclick="exportPDF()" style="background:var(--primary); color:white; margin-bottom:8px;">📄 Export PDF</button>
+                <button onclick="document.getElementById('importInput').click()" style="background:#334155; color:white;">📥 Import JSON</button>
+                <input type="file" id="importInput" style="display:none" onchange="importBackup(event)">
+            </div>
+            <button onclick="logout()" style="background:var(--danger); color:white">Logout</button>
         </div>
     </div>
 
@@ -138,6 +125,7 @@
         <div class="nav-item active" onclick="nav('home', this)">🏠<br>Home</div>
         <div class="nav-item" onclick="nav('earn', this)">💰<br>Earn</div>
         <div class="nav-item" onclick="nav('loan', this)">🤝<br>Loan</div>
+        <div class="nav-item" onclick="nav('goal', this)">🎯<br>Goal</div>
         <div class="nav-item" onclick="nav('hist', this)">📊<br>History</div>
         <div class="nav-item" onclick="nav('acc', this)">👤<br>Account</div>
     </div>
@@ -154,12 +142,11 @@
     };
 
     firebase.initializeApp(firebaseConfig);
-    firebase.firestore().enablePersistence().catch(() => {});
-
+    firebase.firestore().enablePersistence().catch(()=>{});
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    let ex = [], ea = [], loans = [], wallet = 0, limit = 0, user = {name: "User", photo: "https://via.placeholder.com/100"}, bChart;
+    let ex = [], ea = [], loans = [], goals = [], wallet = 0, limit = 0, user = {name: "User", photo: "https://via.placeholder.com/100"}, bChart;
 
     function handleAuth(type) {
         const e = document.getElementById('email').value, p = document.getElementById('password').value;
@@ -169,61 +156,82 @@
 
     auth.onAuthStateChanged(u => {
         if(u) { 
-            document.getElementById('authPage').classList.add('hidden'); 
-            document.getElementById('mainApp').classList.remove('hidden'); 
+            document.getElementById('authPage').classList.add('hidden'); document.getElementById('mainApp').classList.remove('hidden'); 
             db.collection('users').doc(auth.currentUser.uid).onSnapshot(doc => {
                 if(doc.exists) {
                     const d = doc.data();
-                    ex=d.ex||[]; ea=d.ea||[]; loans=d.loans||[];
+                    ex=d.ex||[]; ea=d.ea||[]; loans=d.loans||[]; goals=d.goals||[];
                     wallet=d.wallet||0; limit=d.limit||0; user=d.user||user;
                     updateUI();
                 }
             });
-        } else {
-            document.getElementById('authPage').classList.remove('hidden');
-            document.getElementById('mainApp').classList.add('hidden');
-        }
+        } else { document.getElementById('authPage').classList.remove('hidden'); document.getElementById('mainApp').classList.add('hidden'); }
     });
 
-    function sync() { if(auth.currentUser) db.collection('users').doc(auth.currentUser.uid).set({ ex, ea, loans, wallet, limit, user }, { merge: true }); }
+    function sync() { if(auth.currentUser) db.collection('users').doc(auth.currentUser.uid).set({ ex, ea, loans, goals, wallet, limit, user }, { merge: true }); }
 
     function updateUI() {
         let ts = ex.reduce((s,i)=>s+i.a, 0), te = ea.reduce((s,i)=>s+i.a, 0);
-        let lT = loans.filter(l=>l.type==='taken').reduce((s,i)=>s+i.a, 0);
-        let lG = loans.filter(l=>l.type==='given').reduce((s,i)=>s+i.a, 0);
+        let lT = loans.filter(l=>l.type==='taken').reduce((s,i)=>s+i.a, 0), lG = loans.filter(l=>l.type==='given').reduce((s,i)=>s+i.a, 0);
         document.getElementById('walletTotal').innerText = (wallet + te - ts + lT - lG).toLocaleString() + " TK";
         document.getElementById('budgetLeft').innerText = Math.max(0, limit - ts).toLocaleString() + " TK";
         document.getElementById('hName').innerText = user.name; document.getElementById('hPic').src = user.photo;
         document.getElementById('accDisplayName').innerText = user.name; document.getElementById('accPic').src = user.photo;
+        const now = new Date();
+        document.getElementById('todaySpend').innerText = ex.filter(t => new Date(t.date).toDateString() === now.toDateString()).reduce((s,i)=>s+i.a, 0).toLocaleString();
+        document.getElementById('monthSpend').innerText = ex.filter(t => new Date(t.date).getMonth() === now.getMonth()).reduce((s,i)=>s+i.a, 0).toLocaleString();
         renderChart(te, ts);
+        refreshCurrentPage();
     }
 
     function renderChart(te, ts) {
         const ctx = document.getElementById('budgetChart').getContext('2d');
         if(bChart) bChart.destroy();
-        bChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Earn', 'Spend'], datasets: [{ data: [te, ts], backgroundColor: ['#238636', '#f85149'], borderWidth: 0 }] }, options: { maintainAspectRatio: false } });
+        bChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Earn', 'Spend'], datasets: [{ data: [te, ts], backgroundColor: ['#238636', '#f85149'], borderWidth: 0 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false } } } });
     }
 
     function nav(p, el) {
         document.querySelectorAll('.page').forEach(x => x.classList.remove('active-page'));
         document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
         document.getElementById(p).classList.add('active-page'); el.classList.add('active');
-        if(p==='hist') renderHist(); if(p==='earn') renderEarn(); if(p==='loan') renderLoans();
+        refreshCurrentPage();
+    }
+
+    function refreshCurrentPage() {
+        const activeId = document.querySelector('.active-page').id;
+        if(activeId === 'hist') renderHist();
+        if(activeId === 'earn') renderEarn();
+        if(activeId === 'loan') renderLoans();
+        if(activeId === 'goal') renderGoals();
     }
 
     function addEx() { let n = document.getElementById('exN').value, a = parseFloat(document.getElementById('exA').value); if(!n || isNaN(a)) return; ex.push({id:Date.now(), n, a, date: new Date().toISOString()}); sync(); document.getElementById('exN').value=''; document.getElementById('exA').value=''; }
-    function addEa() { let n = document.getElementById('eaN').value, a = parseFloat(document.getElementById('eaA').value); if(!n || isNaN(a)) return; ea.push({id:Date.now(), n, a}); sync(); renderEarn(); }
-    function addLoan() { let t = document.getElementById('loanType').value, p = document.getElementById('loanPerson').value, a = parseFloat(document.getElementById('loanAmount').value); if(!p || isNaN(a)) return; loans.push({id:Date.now(), type:t, p, a}); sync(); renderLoans(); }
+    function addEa() { let n = document.getElementById('eaN').value, a = parseFloat(document.getElementById('eaA').value); if(!n || isNaN(a)) return; ea.push({id:Date.now(), n, a}); sync(); }
+    function addLoan() { let t = document.getElementById('loanType').value, p = document.getElementById('loanPerson').value, a = parseFloat(document.getElementById('loanAmount').value); if(!p || isNaN(a)) return; loans.push({id:Date.now(), type:t, p, a}); sync(); }
+    function addGoal() { let n = document.getElementById('goalN').value, a = parseFloat(document.getElementById('goalA').value); if(!n || isNaN(a)) return; goals.push({id:Date.now(), n, a}); sync(); }
 
-    function renderHist() { document.getElementById('histList').innerHTML = ex.slice().reverse().map(i => `<div class="txn-card"><div><b>${i.n}</b></div><div><b>-${i.a} TK</b></div></div>`).join(''); }
-    function renderEarn() { document.getElementById('earnList').innerHTML = ea.slice().reverse().map(i => `<div class="txn-card" style="border-left-color:var(--earn-color)"><div><b>${i.n}</b></div><div><b>+${i.a} TK</b></div></div>`).join(''); }
-    function renderLoans() { document.getElementById('loanList').innerHTML = loans.map(l => `<div class="txn-card" style="border-left-color:var(--loan-color)"><div><b>${l.p}</b> (${l.type})</div><div><b>${l.a} TK</b></div></div>`).join(''); }
+    function renderHist() { document.getElementById('histList').innerHTML = ex.slice().reverse().map(i => `<div class="txn-card"><div><b>${i.n}</b><br><small>${new Date(i.date).toLocaleDateString()}</small></div><div style="text-align:right"><b>-${i.a} TK</b><br><span class="del-btn" onclick="del('ex',${i.id})">Delete</span></div></div>`).join(''); }
+    function renderEarn() { document.getElementById('earnList').innerHTML = ea.slice().reverse().map(i => `<div class="txn-card" style="border-left-color:var(--earn-color)"><div><b>${i.n}</b></div><div style="text-align:right"><b>+${i.a} TK</b><br><span class="del-btn" onclick="del('ea',${i.id})">Delete</span></div></div>`).join(''); }
+    function renderLoans() { document.getElementById('loanList').innerHTML = loans.slice().reverse().map(l => `<div class="txn-card" style="border-left-color:var(--loan-color)"><div><b>${l.p}</b> (${l.type})</div><div style="text-align:right"><b>${l.a} TK</b><br><span class="del-btn" onclick="del('loan',${l.id})">Delete</span></div></div>`).join(''); }
+    function renderGoals() { document.getElementById('goalList').innerHTML = goals.slice().reverse().map(g => `<div class="card-box"><b>${g.n}</b><br><small>${g.a} TK Goal</small><br><span class="del-btn" onclick="del('goal',${g.id})">Remove</span></div>`).join(''); }
+
+    function del(t, id) { 
+        if(t==='ex') ex=ex.filter(x=>x.id!==id); 
+        else if(t==='ea') ea=ea.filter(x=>x.id!==id); 
+        else if(t==='loan') loans=loans.filter(x=>x.id!==id); 
+        else goals=goals.filter(x=>x.id!==id); 
+        sync();
+    }
 
     function setMainBal() { wallet = parseFloat(document.getElementById('mainBalIn').value)||0; sync(); }
     function setLimit() { limit = parseFloat(document.getElementById('limitIn').value)||0; sync(); }
     function saveName() { user.name = document.getElementById('nameIn').value; sync(); }
+    function uploadPic(e) { let r = new FileReader(); r.onload = function() { user.photo = r.result; sync(); }; r.readAsDataURL(e.target.files[0]); }
     function toggleMode() { document.body.classList.toggle('light-mode'); }
     function logout() { auth.signOut(); }
+    function exportBackup() { let data = { ex, ea, loans, goals, wallet, limit, user }; let blob = new Blob([JSON.stringify(data)], { type: "application/json" }); let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `ExpenseBackup.json`; a.click(); }
+    function exportPDF() { const { jsPDF } = window.jspdf; const doc = new jsPDF(); doc.text("Expense Report", 20, 20); ex.forEach((i, idx) => doc.text(`${i.n}: ${i.a} TK`, 20, 30 + (idx*10))); doc.save("Report.pdf"); }
+    function importBackup(e) { let file = e.target.files[0]; if(!file) return; let reader = new FileReader(); reader.onload = (ev) => { let d = JSON.parse(ev.target.result); ex=d.ex; ea=d.ea; loans=d.loans; goals=d.goals; wallet=d.wallet; limit=d.limit; user=d.user; sync(); }; reader.readAsText(file); }
 </script>
 </body>
 </html>
