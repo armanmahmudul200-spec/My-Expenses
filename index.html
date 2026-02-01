@@ -2,8 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Expense Pro - Premium Edition</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -18,176 +22,241 @@
             --text-p: #1f2937; --text-s: #6b7280; --gold: #f59e0b; 
             --toast-bg: rgba(255, 255, 255, 0.95); --toast-text: #1f2937;
         }
-        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); color: var(--text-p); margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; transition: 0.3s; }
-        .content-area { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 100px; }
+        
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); color: var(--text-p); margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; transition: 0.3s; overflow: hidden; }
+
+        .content-area { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 120px; -webkit-overflow-scrolling: touch; }
+
+        #authPage { position: fixed; inset: 0; background: var(--bg); z-index: 5000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .auth-card { background: var(--card); padding: 30px; border-radius: 24px; width: 100%; max-width: 350px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
+
         .page { display: none; animation: fadeIn 0.3s; }
         .active-page { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        /* Premium Home Summary Cards */
-        .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 25px; }
-        .summary-card { 
-            background: linear-gradient(145deg, var(--card), rgba(255,255,255,0.02)); 
-            padding: 18px 12px; 
-            border-radius: 22px; 
-            text-align: left; 
-            border: 1px solid rgba(255,255,255,0.05); 
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-            position: relative;
-            overflow: hidden;
-        }
-        .summary-card::before { content: ""; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--primary); }
-        .summary-card.month-card::before { background: var(--accent); }
-        .summary-card span { font-size: 10px; color: var(--text-s); font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; display: block; margin-bottom: 8px; }
-        .summary-card b { font-size: 18px; display: block; color: var(--text-p); font-weight: 800; }
-        .summary-card b::after { content: " TK"; font-size: 10px; opacity: 0.6; margin-left: 2px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* General Styles */
-        .glass-balance { background: linear-gradient(135deg, var(--primary) 0%, #4c1d95 100%); padding: 25px; border-radius: 24px; color: white; text-align: center; margin-bottom: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
-        .card-box { background: var(--card); padding: 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 15px; position: relative; }
-        .total-header { background: var(--card); padding: 18px; border-radius: 18px; margin-bottom: 15px; border-bottom: 4px solid var(--primary); display: flex; justify-content: space-between; align-items: center; }
+        .glass-balance { background: linear-gradient(135deg, var(--primary) 0%, #4c1d95 100%); padding: 20px; border-radius: 24px; color: white; text-align: center; margin-bottom: 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
+        .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
+        .summary-card { background: var(--card); padding: 15px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); position: relative; overflow: hidden; }
+        .summary-card::before { content: ""; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--primary); }
+        .summary-card span { font-size: 9px; color: var(--text-s); text-transform: uppercase; display: block; margin-bottom: 5px; }
+        .summary-card b { font-size: 16px; color: var(--text-p); }
+
+        .card-box { background: var(--card); padding: 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 15px; }
+        .total-header { background: var(--card); padding: 15px; border-radius: 18px; margin-bottom: 15px; border-bottom: 4px solid var(--primary); display: flex; justify-content: space-between; align-items: center; }
         
-        input, select { width: 100%; padding: 12px; margin-bottom: 12px; background: var(--bg); border: 1px solid var(--text-s); border-radius: 12px; color: var(--text-p); box-sizing: border-box; outline: none; }
-        button { width: 100%; padding: 14px; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        input, select { width: 100%; padding: 12px; margin-bottom: 10px; background: var(--bg); border: 1px solid var(--text-s); border-radius: 12px; color: var(--text-p); outline: none; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; }
         .btn-main { background: var(--primary); color: white; }
-        .txn-card { background: var(--card); padding: 15px; border-radius: 18px; margin-bottom: 10px; border-left: 4px solid var(--danger); display: flex; justify-content: space-between; align-items: center; }
-        .nav-bar { position: fixed; bottom: 0; width: 100%; background: var(--card); display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid rgba(0,0,0,0.1); z-index: 1000; }
-        .nav-item { color: var(--text-s); font-size: 8px; text-align: center; cursor: pointer; flex: 1; }
-        .nav-item.active { color: var(--primary); }
-        .toast-container { position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%); z-index: 2000; pointer-events: none; }
-        .toast { background: var(--toast-bg); color: var(--toast-text); padding: 12px 25px; border-radius: 30px; margin-bottom: 10px; opacity: 0; transform: translateY(20px); transition: 0.3s; }
-        .toast.show { opacity: 1; transform: translateY(0); }
-        .mode-toggle { position: absolute; top: 20px; right: 20px; background: var(--card); width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid var(--text-s); z-index: 10; font-size: 18px; }
-        .del-btn { color: var(--danger); font-size: 11px; cursor: pointer; font-weight: bold; }
-        .paid-btn { color: var(--earn-color); font-size: 11px; cursor: pointer; font-weight: bold; margin-right: 12px; }
-        .alert-box { background: rgba(248, 81, 73, 0.1); border: 1px solid var(--danger); color: var(--danger); padding: 10px; border-radius: 12px; margin-bottom: 15px; font-size: 12px; display: none; text-align: center; }
         
-        /* Premium Profile Styles (Account Page) */
-        .profile-section { text-align: center; padding: 20px 0; background: linear-gradient(180deg, rgba(139, 92, 246, 0.1) 0%, transparent 100%); border-radius: 24px; margin-bottom: 20px; }
-        .profile-img-container { position: relative; width: 100px; height: 100px; margin: 0 auto; cursor: pointer; }
-        .profile-img-container img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary); padding: 3px; background: var(--bg); }
-        .edit-badge { position: absolute; bottom: 0; right: 0; background: var(--primary); color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 14px; border: 2px solid var(--bg); }
-        .setting-item { display: flex; align-items: center; gap: 15px; padding: 12px 0; border-bottom: 1px solid rgba(128,128,128,0.1); }
-        .icon-box { width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .txn-card { background: var(--card); padding: 12px; border-radius: 16px; margin-bottom: 10px; border-left: 4px solid var(--danger); display: flex; justify-content: space-between; align-items: center; }
+        
+        .nav-bar { position: fixed; bottom: 0; width: 100%; background: var(--card); display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid rgba(255,255,255,0.05); z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { color: var(--text-s); font-size: 10px; text-align: center; cursor: pointer; flex: 1; }
+        .nav-item.active { color: var(--primary); font-weight: bold; }
+        .nav-item div { font-size: 18px; margin-bottom: 2px; }
+
+        .mode-toggle { position: absolute; top: 15px; right: 15px; background: var(--card); width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid var(--text-s); z-index: 100; font-size: 16px; }
+        .toast-container { position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%); z-index: 2000; width: 80%; text-align: center; }
+        .toast { background: var(--toast-bg); color: var(--toast-text); padding: 10px 20px; border-radius: 25px; font-size: 12px; opacity: 0; transition: 0.3s; display: inline-block; }
+        .toast.show { opacity: 1; }
+        .del-btn { color: var(--danger); font-size: 11px; font-weight: bold; cursor: pointer; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-<div class="content-area">
-    <div class="mode-toggle" onclick="toggleMode()">🌓</div>
-
-    <div id="home" class="page active-page">
-        <div style="display:flex; align-items:center; gap: 12px; margin-bottom:20px;">
-            <img id="hPic" src="" style="width:50px; height:50px; border-radius:50%; object-fit:cover; border: 2px solid var(--primary);">
-            <div><span style="font-size:12px; color:var(--text-s);">Welcome back,</span><h3 id="hName" style="margin:0;">User</h3></div>
-        </div>
-        <div id="budgetAlert" class="alert-box">⚠️ Warning: 80% Budget Used!</div>
-        <div class="glass-balance">
-            <span style="font-size: 11px; opacity: 0.9;">MONTHLY BUDGET REMAINING</span>
-            <div id="budgetLeft" style="font-size:35px; font-weight:800; margin:10px 0;">0 TK</div>
-            <div style="background:rgba(255,255,255,0.15); border-radius:15px; padding:10px; display: inline-block; min-width: 150px;">
-                <span style="font-size: 10px;">WALLET: <b id="walletTotal">0 TK</b></span>
-            </div>
-        </div>
-        
-        <div class="summary-grid">
-            <div class="summary-card">
-                <span>Today's Spend</span>
-                <b id="todaySpend">0</b>
-            </div>
-            <div class="summary-card month-card">
-                <span>Month Spend</span>
-                <b id="monthSpend">0</b>
-            </div>
-        </div>
-
-        <div class="card-box" style="margin-top:20px; height: 260px;">
-            <p style="font-size: 10px; color: var(--text-s); text-align: center; margin-top: 0;">INCOME VS EXPENSE OVERVIEW</p>
-            <canvas id="budgetChart"></canvas>
-        </div>
-        <div class="card-box">
-            <input type="text" id="exN" placeholder="Expense name"><input type="number" id="exA" placeholder="Amount (TK)">
-            <button class="btn-main" onclick="addEx()">Add Expense</button>
-        </div>
-    </div>
-
-    <div id="earn" class="page"><div class="total-header"><span>Total Earnings</span><h2 id="totalEarnHeader" style="margin:0; color:var(--earn-color)">0 TK</h2></div><div class="card-box"><input type="text" id="eaN" placeholder="Source"><input type="number" id="eaA" placeholder="Amount"><button style="background:var(--earn-color); color:white" onclick="addEa()">Add Income</button></div><div id="earnList"></div></div>
-    <div id="loan" class="page"><div class="total-header" style="border-bottom-color: var(--loan-color);"><span>Net Loan</span><h2 id="totalLoanHeader" style="margin:0; color:var(--loan-color)">0 TK</h2></div><div class="card-box"><select id="loanType"><option value="given">Given</option><option value="taken">Taken</option></select><input type="text" id="loanPerson" placeholder="Name"><input type="number" id="loanAmount" placeholder="Amount"><button style="background:var(--loan-color); color:white" onclick="addLoan()">Add Loan</button></div><div id="loanList"></div></div>
-    <div id="goal" class="page"><h2>Goals 🎯</h2><div class="card-box"><input type="text" id="goalN" placeholder="Target Name"><input type="number" id="goalA" placeholder="Goal Amount"><button style="background:var(--gold); color:black" onclick="addGoal()">Set Goal</button></div><div id="goalList"></div></div>
-    <div id="hist" class="page"><div class="total-header"><span>Total Spent</span><h2 id="totalSpentHeader" style="margin:0; color:var(--danger)">0 TK</h2></div><div id="histList"></div></div>
-    <div id="acc" class="page">
-        <div class="profile-section">
-            <div class="profile-img-container" onclick="document.getElementById('pInput').click()"><img id="accPic" src=""><div class="edit-badge">📸</div></div>
-            <input type="file" id="pInput" style="display:none" onchange="uploadPic(event)">
-            <h2 id="accDisplayName" style="margin: 15px 0 5px 0;">User Name</h2><p style="font-size: 12px; color: var(--text-s); margin: 0;">Premium Member</p>
-        </div>
-        <div class="card-box"><p style="font-size: 11px; color: var(--primary); font-weight: bold; margin-bottom: 10px;">👤 PERSONAL INFO</p><input type="text" id="nameIn" placeholder="Enter Name"><button class="btn-main" onclick="saveName()">Save Profile</button></div>
-        <div class="card-box"><p style="font-size: 11px; color: var(--accent); font-weight: bold; margin-bottom: 10px;">⚙️ ACCOUNT SETTINGS</p>
-            <div class="setting-item"><div class="icon-box" style="background: rgba(34, 211, 238, 0.1); color: var(--accent);">💰</div><div style="flex:1"><small style="color:var(--text-s)">Wallet Balance</small><input type="number" id="mainBalIn" style="margin:0; border:none; padding:5px 0; background:transparent; color:var(--text-p); width:100%;"></div><button onclick="setMainBal()" style="width:auto; padding:8px 15px; font-size:11px;">Sync</button></div>
-            <div class="setting-item"><div class="icon-box" style="background: rgba(139, 92, 246, 0.1); color: var(--primary);">📊</div><div style="flex:1"><small style="color:var(--text-s)">Monthly Budget</small><input type="number" id="limitIn" style="margin:0; border:none; padding:5px 0; background:transparent; color:var(--text-p); width:100%;"></div><button onclick="setLimit()" style="width:auto; padding:8px 15px; font-size:11px; background:#334155; color:white;">Set</button></div>
-        </div>
-        <div class="card-box"><p style="font-size: 11px; color: var(--earn-color); font-weight: bold; margin-bottom: 10px;">📁 DATA & BACKUP</p><div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;"><button onclick="exportBackup()" style="background:var(--earn-color); color:white; font-size:12px;">📤 Export</button><button onclick="exportPDF()" style="background:var(--primary); color:white; font-size:12px;">📄 PDF</button></div><button onclick="document.getElementById('importInput').click()" style="background:#334155; color:white; font-size:12px;">📥 Import Backup File</button><input type="file" id="importInput" style="display:none" onchange="importBackup(event)"></div>
-        <button style="background:rgba(248, 81, 73, 0.1); color:var(--danger); border:1px solid var(--danger); margin: 20px 0;" onclick="clearAllData()">🗑️ Reset All Data</button>
+<div id="authPage">
+    <div class="auth-card">
+        <h2 style="color:var(--primary); margin-top:0;">Expense Pro</h2>
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Password">
+        <button class="btn-main" onclick="handleAuth('login')">Login</button>
+        <button onclick="handleAuth('signup')" style="background:transparent; color:var(--accent); margin-top:10px;">Create Account</button>
     </div>
 </div>
 
-<div class="nav-bar">
-    <div class="nav-item active" onclick="nav('home', this)">🏠<br>Home</div>
-    <div class="nav-item" onclick="nav('earn', this)">💰<br>Earn</div>
-    <div class="nav-item" onclick="nav('loan', this)">🤝<br>Loan</div>
-    <div class="nav-item" onclick="nav('goal', this)">🎯<br>Goal</div>
-    <div class="nav-item" onclick="nav('hist', this)">📊<br>History</div>
-    <div class="nav-item" onclick="nav('acc', this)">👤<br>Account</div>
+<div id="mainApp" class="hidden">
+    <div class="mode-toggle" onclick="toggleMode()">🌓</div>
+    <div class="content-area">
+        <div id="home" class="page active-page">
+            <div style="display:flex; align-items:center; gap: 12px; margin-bottom:15px;">
+                <img id="hPic" src="https://via.placeholder.com/100" style="width:45px; height:45px; border-radius:50%; object-fit:cover; border: 2px solid var(--primary);">
+                <div><span style="font-size:11px; color:var(--text-s);">Welcome back,</span><h3 id="hName" style="margin:0; font-size:16px;">User</h3></div>
+            </div>
+            <div class="glass-balance">
+                <span style="font-size: 10px; opacity: 0.9;">MONTHLY BUDGET REMAINING</span>
+                <div id="budgetLeft" style="font-size:32px; font-weight:800; margin:5px 0;">0 TK</div>
+                <div style="background:rgba(255,255,255,0.15); border-radius:12px; padding:8px; display: inline-block; width: 80%;">
+                    <span style="font-size: 10px;">WALLET: <b id="walletTotal">0 TK</b></span>
+                </div>
+            </div>
+            <div class="summary-grid"><div class="summary-card"><span>Today Spend</span><b id="todaySpend">0</b></div><div class="summary-card"><span>Month Spend</span><b id="monthSpend">0</b></div></div>
+            <div class="card-box" style="margin-top:15px; height: 220px;"><canvas id="budgetChart"></canvas></div>
+            <div class="card-box"><input type="text" id="exN" placeholder="Expense name"><input type="number" id="exA" placeholder="Amount"><button class="btn-main" onclick="addEx()">Add Expense</button></div>
+        </div>
+
+        <div id="earn" class="page"><div class="total-header"><span>Total Earnings</span><h2 id="totalEarnHeader" style="margin:0; color:var(--earn-color)">0 TK</h2></div><div class="card-box"><input type="text" id="eaN" placeholder="Source"><input type="number" id="eaA" placeholder="Amount"><button style="background:var(--earn-color); color:white" onclick="addEa()">Add Income</button></div><div id="earnList"></div></div>
+        <div id="loan" class="page"><div class="total-header"><span>Net Loan</span><h2 id="totalLoanHeader" style="margin:0; color:var(--loan-color)">0 TK</h2></div><div class="card-box"><select id="loanType"><option value="given">Given</option><option value="taken">Taken</option></select><input type="text" id="loanPerson" placeholder="Name"><input type="number" id="loanAmount" placeholder="Amount"><button style="background:var(--loan-color); color:white" onclick="addLoan()">Add Loan</button></div><div id="loanList"></div></div>
+        <div id="goal" class="page"><h3>Goals 🎯</h3><div class="card-box"><input type="text" id="goalN" placeholder="Target Name"><input type="number" id="goalA" placeholder="Goal Amount"><button style="background:var(--gold); color:black" onclick="addGoal()">Set Goal</button></div><div id="goalList"></div></div>
+        <div id="hist" class="page"><div class="total-header"><span>Total Spent</span><h2 id="totalSpentHeader" style="margin:0; color:var(--danger)">0 TK</h2></div><div id="histList"></div></div>
+
+        <div id="acc" class="page">
+            <div class="card-box" style="text-align:center">
+                <img id="accPic" src="https://via.placeholder.com/100" style="width:80px; height:80px; border-radius:50%; border:3px solid var(--primary); object-fit:cover;">
+                <h3 id="accDisplayName" style="margin:10px 0;">User Name</h3>
+                <button onclick="document.getElementById('pInput').click()" style="width:auto; padding:6px 12px; font-size:11px;">Change Photo</button>
+                <input type="file" id="pInput" style="display:none" onchange="uploadPic(event)">
+            </div>
+            <div class="card-box"><input type="text" id="nameIn" placeholder="Change Name"><button class="btn-main" onclick="saveName()">Save Profile</button></div>
+            <div class="card-box">
+                <p>Wallet: <input type="number" id="mainBalIn"><button onclick="setMainBal()" style="width:auto; padding:6px 12px;">Sync</button></p>
+                <p>Budget: <input type="number" id="limitIn"><button onclick="setLimit()" style="width:auto; padding:6px 12px;">Set</button></p>
+            </div>
+            <div class="card-box">
+                <p style="font-size: 11px; color: var(--earn-color); font-weight: bold;">📁 DATA OPTIONS</p>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:5px;">
+                    <button onclick="exportBackup()" style="background:var(--earn-color); color:white; font-size:12px;">📤 Export JSON</button>
+                    <button onclick="exportPDF()" style="background:var(--primary); color:white; font-size:12px;">📄 PDF Report</button>
+                </div>
+                <button onclick="document.getElementById('importInput').click()" style="background:#334155; color:white; font-size:12px; margin-top:8px;">📥 Import JSON Backup</button>
+                <input type="file" id="importInput" style="display:none" onchange="importBackup(event)">
+            </div>
+            <button onclick="logout()" style="background:var(--danger); color:white; margin-top:5px;">Logout</button>
+            <button onclick="clearAllData()" style="background:transparent; color:var(--danger); border:1px solid var(--danger); margin-top:15px; font-size:12px;">🗑️ Reset All Cloud Data</button>
+        </div>
+    </div>
+
+    <div class="nav-bar">
+        <div class="nav-item active" onclick="nav('home', this)"><div>🏠</div>Home</div>
+        <div class="nav-item" onclick="nav('earn', this)"><div>💰</div>Earn</div>
+        <div class="nav-item" onclick="nav('loan', this)"><div>🤝</div>Loan</div>
+        <div class="nav-item" onclick="nav('goal', this)"><div>🎯</div>Goal</div>
+        <div class="nav-item" onclick="nav('hist', this)"><div>📊</div>History</div>
+        <div class="nav-item" onclick="nav('acc', this)"><div>👤</div>Account</div>
+    </div>
 </div>
 
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
-    let ex = JSON.parse(localStorage.getItem('F_EX')) || [], ea = JSON.parse(localStorage.getItem('F_EA')) || [], loans = JSON.parse(localStorage.getItem('F_LOAN')) || [], goals = JSON.parse(localStorage.getItem('F_GO')) || [], wallet = parseFloat(localStorage.getItem('F_WA')) || 0, limit = parseFloat(localStorage.getItem('F_LI')) || 0, user = JSON.parse(localStorage.getItem('F_US')) || {name: "User", photo: "https://via.placeholder.com/80"}, bChart;
+    // --- Firebase Configuration (Corrected) ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyB8KrSTL2tjTGdnqKPMdXwXT1y_zVT7-Kw",
+        authDomain: "expense-tracker-20.firebaseapp.com",
+        projectId: "expense-tracker-20",
+        storageBucket: "expense-tracker-20.firebasestorage.app",
+        messagingSenderId: "204031122093",
+        appId: "1:204031122093:web:04331f17b1fc5fb7ee4424"
+    };
 
-    function showToast(m) { const c = document.getElementById('toastContainer'); const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; c.appendChild(t); setTimeout(()=>t.classList.add('show'), 10); setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(), 300); }, 2500); }
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
+    let ex = [], ea = [], loans = [], goals = [], wallet = 0, limit = 0, user = {name: "User", photo: "https://via.placeholder.com/100"}, bChart;
+
+    // --- Authentication ---
+    function handleAuth(type) {
+        const e = document.getElementById('email').value, p = document.getElementById('password').value;
+        if(type === 'login') auth.signInWithEmailAndPassword(e, p).catch(err => alert(err.message));
+        else auth.createUserWithEmailAndPassword(e, p).catch(err => alert(err.message));
+    }
+
+    auth.onAuthStateChanged(u => {
+        if(u) { document.getElementById('authPage').classList.add('hidden'); document.getElementById('mainApp').classList.remove('hidden'); loadData(); }
+        else { document.getElementById('authPage').classList.remove('hidden'); document.getElementById('mainApp').classList.add('hidden'); }
+    });
+
+    // --- Data Management ---
+    async function loadData() {
+        const doc = await db.collection('users').doc(auth.currentUser.uid).get();
+        if(doc.exists) {
+            const d = doc.data();
+            ex=d.ex||[]; ea=d.ea||[]; loans=d.loans||[]; goals=d.goals||[];
+            wallet=d.wallet||0; limit=d.limit||0; user=d.user||user;
+            updateUI();
+        }
+    }
+
+    function sync() { if(auth.currentUser) db.collection('users').doc(auth.currentUser.uid).set({ ex, ea, loans, goals, wallet, limit, user }); }
+
+    // --- UI Logic ---
     function updateUI() {
-        let ts = ex.reduce((s,i)=>s+i.a, 0), te = ea.reduce((s,i)=>s+i.a, 0), lT = loans.filter(l=>l.type==='taken'&&l.status==='pending').reduce((s,i)=>s+i.a, 0), lG = loans.filter(l=>l.type==='given'&&l.status==='pending').reduce((s,i)=>s+i.a, 0);
-        document.getElementById('walletTotal').innerText = (wallet + te - ts + lT - lG).toLocaleString();
+        let ts = ex.reduce((s,i)=>s+i.a, 0), te = ea.reduce((s,i)=>s+i.a, 0);
+        let lT = loans.filter(l=>l.type==='taken').reduce((s,i)=>s+i.a, 0);
+        let lG = loans.filter(l=>l.type==='given').reduce((s,i)=>s+i.a, 0);
+        document.getElementById('walletTotal').innerText = (wallet + te - ts + lT - lG).toLocaleString() + " TK";
         document.getElementById('budgetLeft').innerText = Math.max(0, limit - ts).toLocaleString() + " TK";
         document.getElementById('hName').innerText = user.name; document.getElementById('hPic').src = user.photo;
         document.getElementById('accDisplayName').innerText = user.name; document.getElementById('accPic').src = user.photo;
-        const now = new Date(); const tStr = now.toDateString(); const startM = new Date(now.getFullYear(), now.getMonth(), 1);
-        document.getElementById('todaySpend').innerText = ex.filter(t => new Date(t.date).toDateString() === tStr).reduce((s,i)=>s+i.a, 0).toLocaleString();
-        document.getElementById('monthSpend').innerText = ex.filter(t => new Date(t.date) >= startM).reduce((s,i)=>s+i.a, 0).toLocaleString();
-        document.getElementById('totalSpentHeader').innerText = ts.toLocaleString() + " TK";
+        const now = new Date();
+        document.getElementById('todaySpend').innerText = ex.filter(t => new Date(t.date).toDateString() === now.toDateString()).reduce((s,i)=>s+i.a, 0).toLocaleString();
+        document.getElementById('monthSpend').innerText = ex.filter(t => new Date(t.date).getMonth() === now.getMonth()).reduce((s,i)=>s+i.a, 0).toLocaleString();
         document.getElementById('totalEarnHeader').innerText = te.toLocaleString() + " TK";
+        document.getElementById('totalSpentHeader').innerText = ts.toLocaleString() + " TK";
         document.getElementById('totalLoanHeader').innerText = (lT - lG).toLocaleString() + " TK";
-        if (limit > 0 && ts >= (limit * 0.8)) { document.getElementById('budgetAlert').style.display = 'block'; document.getElementById('budgetAlert').innerText = ts >= limit ? "❌ Budget Exceeded!" : "⚠️ 80% Budget Used!"; } else { document.getElementById('budgetAlert').style.display = 'none'; }
         renderChart(te, ts);
     }
 
-    function renderChart(te, ts) { const ctx = document.getElementById('budgetChart').getContext('2d'); if(bChart) bChart.destroy(); bChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Earned', 'Spent'], datasets: [{ data: [te, ts], backgroundColor: ['#238636', '#f85149'], borderWidth: 0 }] }, options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#8b949e', font: { size: 10 } } } } } }); }
-    function nav(p, el) { document.querySelectorAll('.page').forEach(x => x.classList.remove('active-page')); document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active')); document.getElementById(p).classList.add('active-page'); el.classList.add('active'); if(p==='hist') renderHist(); if(p==='earn') renderEarn(); if(p==='loan') renderLoans(); if(p==='goal') renderGoals(); if(p==='acc') { document.getElementById('nameIn').value = user.name; document.getElementById('mainBalIn').value = wallet; document.getElementById('limitIn').value = limit; } updateUI(); }
-    function addEx() { let n = document.getElementById('exN').value, a = parseFloat(document.getElementById('exA').value); if(!n || isNaN(a)) return; ex.push({id:Date.now(), n, a, date: new Date().toISOString()}); saveData(); updateUI(); document.getElementById('exN').value=''; document.getElementById('exA').value=''; showToast("Added ✅"); }
-    function addEa() { let n = document.getElementById('eaN').value, a = parseFloat(document.getElementById('eaA').value); if(!n || isNaN(a)) return; ea.push({id:Date.now(), n, a, date: new Date().toISOString()}); saveData(); updateUI(); renderEarn(); showToast("Income Added 💰"); }
-    function addLoan() { let t = document.getElementById('loanType').value, p = document.getElementById('loanPerson').value, a = parseFloat(document.getElementById('loanAmount').value); if(!p || isNaN(a)) return; loans.push({id:Date.now(), type:t, p, a, status:'pending', date:new Date().toLocaleDateString()}); saveData(); renderLoans(); updateUI(); }
+    function renderChart(te, ts) {
+        const ctx = document.getElementById('budgetChart').getContext('2d');
+        if(bChart) bChart.destroy();
+        bChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Income', 'Spent'], datasets: [{ data: [te, ts], backgroundColor: ['#238636', '#f85149'], borderWidth: 0 }] }, options: { maintainAspectRatio: false } });
+    }
+
+    function nav(p, el) {
+        document.querySelectorAll('.page').forEach(x => x.classList.remove('active-page'));
+        document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+        document.getElementById(p).classList.add('active-page'); el.classList.add('active');
+        if(p==='hist') renderHist(); if(p==='earn') renderEarn(); if(p==='loan') renderLoans(); if(p==='goal') renderGoals();
+        document.querySelector('.content-area').scrollTop = 0;
+    }
+
+    // --- Features ---
+    function addEx() { let n = document.getElementById('exN').value, a = parseFloat(document.getElementById('exA').value); if(!n || isNaN(a)) return; ex.push({id:Date.now(), n, a, date: new Date().toISOString()}); sync(); updateUI(); showToast("Added ✅"); document.getElementById('exN').value=''; document.getElementById('exA').value=''; }
+    function addEa() { let n = document.getElementById('eaN').value, a = parseFloat(document.getElementById('eaA').value); if(!n || isNaN(a)) return; ea.push({id:Date.now(), n, a, date: new Date().toISOString()}); sync(); updateUI(); renderEarn(); }
+    function addLoan() { let t = document.getElementById('loanType').value, p = document.getElementById('loanPerson').value, a = parseFloat(document.getElementById('loanAmount').value); if(!p || isNaN(a)) return; loans.push({id:Date.now(), type:t, p, a, date:new Date().toLocaleDateString()}); sync(); renderLoans(); updateUI(); }
+    function addGoal() { let n = document.getElementById('goalN').value, a = parseFloat(document.getElementById('goalA').value); if(!n || isNaN(a)) return; goals.push({id:Date.now(), n, a}); sync(); renderGoals(); }
+
     function renderHist() { document.getElementById('histList').innerHTML = ex.slice().reverse().map(i => `<div class="txn-card"><div><b>${i.n}</b><br><small>${new Date(i.date).toLocaleDateString()}</small></div><div style="text-align:right"><b>-${i.a} TK</b><br><span class="del-btn" onclick="del('ex',${i.id})">Delete</span></div></div>`).join(''); }
-    function renderEarn() { document.getElementById('earnList').innerHTML = ea.slice().reverse().map(i => `<div class="txn-card" style="border-left-color:var(--earn-color)"><div><b>${i.n}</b><br><small>${new Date(i.date).toLocaleDateString()}</small></div><div style="text-align:right"><b>+${i.a} TK</b><br><span class="del-btn" onclick="del('ea',${i.id})">Delete</span></div></div>`).join(''); }
-    function renderLoans() { document.getElementById('loanList').innerHTML = loans.slice().reverse().map(l => `<div class="txn-card" style="border-left-color:var(--loan-color); opacity:${l.status==='paid'?.5:1}"><div><b>${l.p}</b> (${l.type})<br><small>${l.status}</small></div><div style="text-align:right"><b>${l.a} TK</b><br>${l.status==='pending'?`<span class="paid-btn" onclick="markPaid(${l.id})">Paid</span>`:''}<span class="del-btn" onclick="delLoan(${l.id})">Delete</span></div></div>`).join(''); }
-    function renderGoals() { let cS = (ea.reduce((s,i)=>s+i.a,0)+wallet)-ex.reduce((s,i)=>s+i.a,0); document.getElementById('goalList').innerHTML = goals.map(g => { let p = Math.min((cS/g.a)*100,100); return `<div class="card-box"><b>${g.n}</b> <span style="float:right">${g.a} TK</span><div style="height:8px; background:#334155; border-radius:10px; margin:10px 0; overflow:hidden;"><div style="width:${p}%; height:100%; background:var(--gold);"></div></div><small>${p.toFixed(1)}% Saved</small><span class="del-btn" style="float:right" onclick="delGoal(${g.id})">Remove</span></div>`; }).join(''); }
-    function addGoal() { let n = document.getElementById('goalN').value, a = parseFloat(document.getElementById('goalA').value); if(!n || isNaN(a)) return; goals.push({id:Date.now(), n, a}); saveData(); renderGoals(); showToast("Goal set! 🎯"); }
-    function setMainBal() { wallet = parseFloat(document.getElementById('mainBalIn').value)||0; saveData(); updateUI(); showToast("Wallet Synced"); }
-    function setLimit() { limit = parseFloat(document.getElementById('limitIn').value)||0; saveData(); updateUI(); showToast("Budget Updated"); }
-    function saveName() { user.name = document.getElementById('nameIn').value || user.name; saveData(); updateUI(); showToast("Profile Updated"); }
-    function uploadPic(e) { let r = new FileReader(); r.onload = function() { user.photo = r.result; saveData(); updateUI(); }; if(e.target.files[0]) r.readAsDataURL(e.target.files[0]); }
-    function del(t, id) { if(t==='ex') ex=ex.filter(x=>x.id!==id); else ea=ea.filter(x=>x.id!==id); saveData(); updateUI(); t==='ex'?renderHist():renderEarn(); }
-    function delLoan(id){ loans=loans.filter(x=>x.id!==id); saveData(); renderLoans(); updateUI(); }
-    function delGoal(id){ goals=goals.filter(x=>x.id!==id); saveData(); renderGoals(); }
-    function markPaid(id){ let l=loans.find(x=>x.id===id); if(l)l.status='paid'; saveData(); renderLoans(); updateUI(); }
-    function exportBackup() { let d = { ex, ea, loans, goals, wallet, limit, user }; let b = new Blob([JSON.stringify(d)], { type: "application/json" }); let a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = "ExpensePro_Backup.json"; a.click(); }
-    function importBackup(e) { let f = e.target.files[0]; let r = new FileReader(); r.onload = (ev) => { let d = JSON.parse(ev.target.result); ex=d.ex; ea=d.ea; loans=d.loans; goals=d.goals; wallet=d.wallet; limit=d.limit; user=d.user; saveData(); location.reload(); }; r.readAsText(f); }
-    function exportPDF() { const { jsPDF } = window.jspdf; const doc = new jsPDF(); doc.text("Expense Pro Report", 20, 20); let y = 30; ex.forEach(i => { doc.text(`${new Date(i.date).toLocaleDateString()}: ${i.n} - ${i.a} TK`, 20, y); y += 10; }); doc.save("Report.pdf"); }
-    function saveData() { localStorage.setItem('F_EX', JSON.stringify(ex)); localStorage.setItem('F_EA', JSON.stringify(ea)); localStorage.setItem('F_LOAN', JSON.stringify(loans)); localStorage.setItem('F_GO', JSON.stringify(goals)); localStorage.setItem('F_WA', wallet); localStorage.setItem('F_LI', limit); localStorage.setItem('F_US', JSON.stringify(user)); }
-    function toggleMode() { document.body.classList.toggle('light-mode'); updateUI(); }
-    function clearAllData() { if(confirm("Clear all?")) { localStorage.clear(); location.reload(); } }
-    window.onload = updateUI;
+    function renderEarn() { document.getElementById('earnList').innerHTML = ea.slice().reverse().map(i => `<div class="txn-card" style="border-left-color:var(--earn-color)"><div><b>${i.n}</b></div><div style="text-align:right"><b>+${i.a} TK</b><br><span class="del-btn" onclick="del('ea',${i.id})">Delete</span></div></div>`).join(''); }
+    function renderLoans() { document.getElementById('loanList').innerHTML = loans.map(l => `<div class="txn-card" style="border-left-color:var(--loan-color)"><div><b>${l.p}</b> (${l.type})</div><div style="text-align:right"><b>${l.a} TK</b><br><span class="del-btn" onclick="delLoan(${l.id})">Delete</span></div></div>`).join(''); }
+    function renderGoals() { document.getElementById('goalList').innerHTML = goals.map(g => `<div class="card-box"><b>${g.n}</b><br><small>${g.a} TK Goal</small><br><span class="del-btn" onclick="delGoal(${g.id})">Remove</span></div>`).join(''); }
+
+    function del(t, id) { if(t==='ex') ex=ex.filter(x=>x.id!==id); else ea=ea.filter(x=>x.id!==id); sync(); updateUI(); t==='ex'?renderHist():renderEarn(); }
+    function delLoan(id) { loans=loans.filter(x=>x.id!==id); sync(); renderLoans(); updateUI(); }
+    function delGoal(id) { goals=goals.filter(x=>x.id!==id); sync(); renderGoals(); }
+
+    function setMainBal() { wallet = parseFloat(document.getElementById('mainBalIn').value)||0; sync(); updateUI(); showToast("Wallet Synced"); }
+    function setLimit() { limit = parseFloat(document.getElementById('limitIn').value)||0; sync(); updateUI(); showToast("Budget Set"); }
+    function saveName() { user.name = document.getElementById('nameIn').value; sync(); updateUI(); showToast("Name Saved"); }
+    function uploadPic(e) { let r = new FileReader(); r.onload = function() { user.photo = r.result; sync(); updateUI(); }; r.readAsDataURL(e.target.files[0]); }
+    function toggleMode() { document.body.classList.toggle('light-mode'); }
+    function logout() { auth.signOut(); }
+    function showToast(m) { const c = document.getElementById('toastContainer'); const t = document.createElement('div'); t.className = 'toast show'; t.textContent = m; c.appendChild(t); setTimeout(()=>t.remove(), 2000); }
+
+    // --- Backup Logic ---
+    function exportBackup() {
+        let data = { ex, ea, loans, goals, wallet, limit, user };
+        let blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+        let a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = `ExpensePro_Backup_${new Date().toISOString().slice(0,10)}.json`; a.click();
+    }
+    function importBackup(e) {
+        let file = e.target.files[0]; if(!file) return;
+        let reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                let d = JSON.parse(ev.target.result);
+                ex=d.ex||[]; ea=d.ea||[]; loans=d.loans||[]; goals=d.goals||[];
+                wallet=d.wallet||0; limit=d.limit||0; user=d.user||user;
+                sync(); updateUI(); showToast("Data Restored!");
+            } catch(e) { alert("Invalid Backup File!"); }
+        };
+        reader.readAsText(file);
+    }
+    function exportPDF() { const { jsPDF } = window.jspdf; const doc = new jsPDF(); doc.text("Expense Report", 20, 20); ex.forEach((i, idx) => doc.text(`${i.n}: ${i.a} TK`, 20, 30 + (idx*10))); doc.save("Report.pdf"); }
+    function clearAllData() { if(confirm("Are you sure? This deletes everything!")) { db.collection('users').doc(auth.currentUser.uid).delete(); location.reload(); } }
 </script>
 </body>
 </html>
