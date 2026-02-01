@@ -22,27 +22,52 @@
             --text-p: #1f2937; --text-s: #6b7280; --gold: #f59e0b; 
             --toast-bg: rgba(255, 255, 255, 0.95); --toast-text: #1f2937;
         }
-        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); color: var(--text-p); margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        .content-area { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 110px; -webkit-overflow-scrolling: touch; }
+        
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background-color: var(--bg); 
+            color: var(--text-p); 
+            margin: 0; padding: 0; 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            transition: 0.3s; 
+            overflow: hidden; 
+        }
+
+        /* Mobile Scroll Fix */
+        .content-area { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 15px; 
+            padding-bottom: 120px; 
+            -webkit-overflow-scrolling: touch; 
+        }
+
         #authPage { position: fixed; inset: 0; background: var(--bg); z-index: 5000; display: flex; align-items: center; justify-content: center; padding: 20px; }
         .auth-card { background: var(--card); padding: 30px; border-radius: 24px; width: 100%; max-width: 350px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
+
         .page { display: none; animation: fadeIn 0.3s; }
         .active-page { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
         .glass-balance { background: linear-gradient(135deg, var(--primary) 0%, #4c1d95 100%); padding: 20px; border-radius: 24px; color: white; text-align: center; margin-bottom: 15px; }
         .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .summary-card { background: var(--card); padding: 15px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); position: relative; }
+        
         .card-box { background: var(--card); padding: 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 15px; }
         input, select { width: 100%; padding: 12px; margin-bottom: 10px; background: var(--bg); border: 1px solid var(--text-s); border-radius: 12px; color: var(--text-p); outline: none; box-sizing: border-box; }
         button { width: 100%; padding: 12px; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; }
         .btn-main { background: var(--primary); color: white; }
-        .txn-card { background: var(--card); padding: 12px; border-radius: 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--danger); }
-        .nav-bar { position: fixed; bottom: 0; width: 100%; background: var(--card); display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid rgba(255,255,255,0.05); z-index: 1000; }
+
+        .nav-bar { position: fixed; bottom: 0; width: 100%; background: var(--card); display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid rgba(255,255,255,0.05); z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
         .nav-item { color: var(--text-s); font-size: 10px; text-align: center; flex: 1; }
         .nav-item.active { color: var(--primary); font-weight: bold; }
+        
+        .txn-card { background: var(--card); padding: 12px; border-radius: 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--danger); }
         .mode-toggle { position: absolute; top: 15px; right: 15px; background: var(--card); width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 100; border: 1px solid var(--text-s); }
-        .toast-container { position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%); z-index: 2000; }
-        .toast { background: var(--toast-bg); color: var(--toast-text); padding: 10px 20px; border-radius: 25px; opacity: 0; transition: 0.3s; }
+        .toast-container { position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%); z-index: 2000; width: 80%; text-align: center; }
+        .toast { background: var(--toast-bg); color: var(--toast-text); padding: 10px 20px; border-radius: 25px; font-size: 12px; opacity: 0; transition: 0.3s; display: inline-block; }
         .toast.show { opacity: 1; }
         .hidden { display: none !important; }
     </style>
@@ -64,8 +89,8 @@
     <div class="content-area">
         <div id="home" class="page active-page">
             <div style="display:flex; align-items:center; gap: 12px; margin-bottom:15px;">
-                <img id="hPic" src="https://via.placeholder.com/100" style="width:45px; height:45px; border-radius:50%; border: 2px solid var(--primary);">
-                <div><span style="font-size:11px; color:var(--text-s);">Welcome back,</span><h3 id="hName" style="margin:0;">User</h3></div>
+                <img id="hPic" src="https://via.placeholder.com/100" style="width:45px; height:45px; border-radius:50%; object-fit:cover; border: 2px solid var(--primary);">
+                <div><span style="font-size:11px; color:var(--text-s);">Welcome back,</span><h3 id="hName" style="margin:0; font-size:16px;">User</h3></div>
             </div>
             <div class="glass-balance">
                 <span style="font-size: 10px;">MONTHLY BUDGET REMAINING</span>
@@ -89,7 +114,7 @@
         
         <div id="acc" class="page">
             <div class="card-box" style="text-align:center">
-                <img id="accPic" src="https://via.placeholder.com/100" style="width:80px; height:80px; border-radius:50%; border:3px solid var(--primary);">
+                <img id="accPic" src="https://via.placeholder.com/100" style="width:80px; height:80px; border-radius:50%; border:3px solid var(--primary); object-fit:cover;">
                 <h3 id="accDisplayName">User Name</h3>
                 <button onclick="document.getElementById('pInput').click()" style="width:auto; font-size:11px;">Change Photo</button>
                 <input type="file" id="pInput" style="display:none" onchange="uploadPic(event)">
@@ -126,8 +151,6 @@
     };
 
     firebase.initializeApp(firebaseConfig);
-
-    // --- Offline Persistence Enable ---
     firebase.firestore().enablePersistence().catch(err => console.error("Persistence Error", err));
 
     const auth = firebase.auth();
@@ -145,7 +168,6 @@
         if(u) { 
             document.getElementById('authPage').classList.add('hidden'); 
             document.getElementById('mainApp').classList.remove('hidden'); 
-            // Real-time listener: Net thakle auto sync hobe
             db.collection('users').doc(auth.currentUser.uid).onSnapshot(doc => {
                 if(doc.exists) {
                     const d = doc.data();
@@ -191,9 +213,10 @@
         document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
         document.getElementById(p).classList.add('active-page'); el.classList.add('active');
         if(p==='hist') renderHist(); if(p==='earn') renderEarn(); if(p==='loan') renderLoans(); if(p==='goal') renderGoals();
+        document.querySelector('.content-area').scrollTop = 0;
     }
 
-    function addEx() { let n = document.getElementById('exN').value, a = parseFloat(document.getElementById('exA').value); if(!n || isNaN(a)) return; ex.push({id:Date.now(), n, a, date: new Date().toISOString()}); sync(); updateUI(); showToast("Expense Recorded (Offline) ✅"); document.getElementById('exN').value=''; document.getElementById('exA').value=''; }
+    function addEx() { let n = document.getElementById('exN').value, a = parseFloat(document.getElementById('exA').value); if(!n || isNaN(a)) return; ex.push({id:Date.now(), n, a, date: new Date().toISOString()}); sync(); updateUI(); showToast("Recorded ✅"); document.getElementById('exN').value=''; document.getElementById('exA').value=''; }
     function addEa() { let n = document.getElementById('eaN').value, a = parseFloat(document.getElementById('eaA').value); if(!n || isNaN(a)) return; ea.push({id:Date.now(), n, a, date: new Date().toISOString()}); sync(); updateUI(); renderEarn(); }
     function addLoan() { let t = document.getElementById('loanType').value, p = document.getElementById('loanPerson').value, a = parseFloat(document.getElementById('loanAmount').value); if(!p || isNaN(a)) return; loans.push({id:Date.now(), type:t, p, a, date:new Date().toLocaleDateString()}); sync(); renderLoans(); updateUI(); }
     function addGoal() { let n = document.getElementById('goalN').value, a = parseFloat(document.getElementById('goalA').value); if(!n || isNaN(a)) return; goals.push({id:Date.now(), n, a}); sync(); renderGoals(); }
